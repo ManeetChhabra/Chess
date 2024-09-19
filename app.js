@@ -9,6 +9,7 @@ const server = http.createServer(app);
 const io = socket(server);
 const chess = new Chess();
 let players = {};
+let spectators = [];
 let currentPlayer = "w";
 
 app.use(express.static("public"));
@@ -25,11 +26,21 @@ io.on("connection", function (uniquesocket) {
   } else if (!players.black) {
     players.black = uniquesocket.id;
     uniquesocket.emit("playerRole", "b");
-  } else uniquesocket.emit("spectatorRole");
-
+  } else{
+    uniquesocket.emit("spectatorRole");
+    spectators.push(uniquesocket.id);
+  } 
   uniquesocket.on("disconnect", function () {
     if (players.white === uniquesocket.id) delete players.white;
     if (players.black === uniquesocket.id) delete players.black;
+
+    spectators = spectators.filter((spectator) => spectator !== uniquesocket.id);
+
+     if (!players.white && !players.black) {
+      chess.reset(); // Reset the chess game
+      currentPlayer = "w"; // Reset the current player to white
+      console.log("Game reset: Both players disconnected.");
+    }
   });
   uniquesocket.on("move", function(move){
     try {
@@ -53,6 +64,6 @@ io.on("connection", function (uniquesocket) {
   });
 });
 
-server.listen(process.env.PORT||3000, () => {
+server.listen(3000, () => {
   console.log("Server is running on port 3000");
 });
